@@ -1,6 +1,6 @@
-import { Component, OnInit, PLATFORM_ID, Inject  } from '@angular/core';
+import { Component, OnInit, PLATFORM_ID, Inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { AgChartOptions } from 'ag-charts-community';
+import { AgChartOptions, AgNumberAxisOptions, AgTimeAxisOptions } from 'ag-charts-community';
 import { TrackedHoursService } from './track-hours-chart.service';
 import { TimePeriod } from '../../models/track-hours.interface';
 
@@ -28,11 +28,12 @@ import { TimePeriod } from '../../models/track-hours.interface';
           </select>
         </div>
       </div>
-      <ag-charts
-        *ngIf="isBrowser"
-        [options]="chartOptions"
-        style="height: 400px; width: 100%;">
-      </ag-charts>
+      <div class="chart-wrapper">
+        <ag-charts
+          *ngIf="isBrowser"
+          [options]="chartOptions">
+        </ag-charts>
+      </div>
     </div>
   `,
   styles: [`
@@ -41,6 +42,23 @@ import { TimePeriod } from '../../models/track-hours.interface';
       border-radius: 12px;
       padding: 20px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      height: 500px;
+      display: flex;
+      flex-direction: column;
+    }
+    .chart-wrapper {
+      flex: 1;
+      min-height: 0;  /* Important for proper flex behavior */
+      position: relative;
+    }
+    :host ::ng-deep .chart-wrapper ag-charts {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100% !important;
+      height: 100% !important;
     }
     .chart-header {
       display: flex;
@@ -92,7 +110,10 @@ export class TrackedHoursChartComponent implements OnInit {
   selectedPeriod: TimePeriod = 'month';
   chartOptions!: AgChartOptions;
 
-  constructor(private trackedHoursService: TrackedHoursService, @Inject(PLATFORM_ID) platformId: Object) {
+  constructor(
+    private trackedHoursService: TrackedHoursService,
+    @Inject(PLATFORM_ID) platformId: Object
+  ) {
     this.isBrowser = isPlatformBrowser(platformId);
     if (this.isBrowser) {
       this.chartOptions = this.createChartOptions();
@@ -100,13 +121,14 @@ export class TrackedHoursChartComponent implements OnInit {
   }
 
   ngOnInit() {
-    if (this.isBrowser){
+    if (this.isBrowser) {
       this.loadChartData();
     }
   }
 
   private createChartOptions(): AgChartOptions {
-    return {  
+    return {
+      // autoSize: true,  // Enable auto-sizing
       data: [],
       series: [
         {
@@ -121,9 +143,11 @@ export class TrackedHoursChartComponent implements OnInit {
           },
           tooltip: {
             renderer: (params: any) => {
+              const date = params.datum.date;
+              const hours = params.datum.employeeHours;
               return {
-                title: new Date(params.xValue).toLocaleDateString(),
-                content: `${params.yValue.toFixed(1)} hours`
+                title: date instanceof Date ? date.toLocaleDateString() : new Date(date).toLocaleDateString(),
+                content: `${Number(hours).toFixed(1)} hours`
               };
             }
           },
@@ -141,29 +165,34 @@ export class TrackedHoursChartComponent implements OnInit {
           },
           tooltip: {
             renderer: (params: any) => {
+              const date = params.datum.date;
+              const hours = params.datum.clientHours;
               return {
-                title: new Date(params.xValue).toLocaleDateString(),
-                content: `${params.yValue.toFixed(1)} hours`
+                title: date instanceof Date ? date.toLocaleDateString() : new Date(date).toLocaleDateString(),
+                content: `${Number(hours).toFixed(1)} hours`
               };
             }
           },
           interpolation: { type: "smooth" },
         }
       ],
-      axes: [
-        {
-          type: 'time' as any,
+      axes: [{
+          type: 'time',
           position: 'bottom',
-        },
+          label: {
+            format: '%Y-%m-%d'
+          },
+          nice: true
+        } as unknown as AgTimeAxisOptions,
         {
-          type: 'number' as any,
+          type: 'number',
           position: 'left',
           title: {
             enabled: true,
             text: 'Hours'
-          }
-        }
-      ],
+          },
+        } as unknown as AgNumberAxisOptions
+      ] as any,
       theme: {
         palette: {
           fills: ['#6E62E5', '#FFA500'],
@@ -172,7 +201,7 @@ export class TrackedHoursChartComponent implements OnInit {
       },
       padding: {
         top: 20,
-        right: 20,
+        right: 50,
         bottom: 30,
         left: 40
       }
@@ -181,13 +210,18 @@ export class TrackedHoursChartComponent implements OnInit {
 
   loadChartData() {
     if (!this.isBrowser) return;
+    
     this.trackedHoursService.getTrackedHours(this.selectedPeriod)
       .subscribe(data => {
+        const processedData = data.map(item => ({
+          ...item,
+          date: new Date(item.date)
+        }));
+        
         this.chartOptions = {
           ...this.chartOptions,
-          data: data
+          data: processedData
         };
       });
-    console.log('test', this.chartOptions)
   }
 }

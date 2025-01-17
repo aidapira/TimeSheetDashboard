@@ -12,7 +12,7 @@ import { DashboardModule } from './features/dashboard/dashboard.module';
 import { provideHttpClient } from '@angular/common/http';
 import { AgGridModule } from 'ag-grid-angular';
 
-import { TimesheetService } from './features/dashboard/time-tracking/time-tracking.service';
+import { TimeTrackingService } from './features/dashboard/time-tracking/time-tracking.service';
 import { HoursPerEmployeeService } from './features/dashboard/hours-per-employee/hours-per-employee.service';
 import { EmployeeMetricsService } from './features/dashboard/employee-metrics/employee-metrics.service';
 import { TrackedHoursService } from './features/dashboard/track-hours-chart/track-hours-chart.service';
@@ -30,6 +30,6 @@ import { TrackedHoursService } from './features/dashboard/track-hours-chart/trac
     AgGridModule,
     AgGridAngular,
   ],
-  providers: [provideHttpClient(), TimesheetService, HoursPerEmployeeService, EmployeeMetricsService, TrackedHoursService],
+  providers: [provideHttpClient(), TimeTrackingService, HoursPerEmployeeService, EmployeeMetricsService, TrackedHoursService],
 })
 export class AppModule { }

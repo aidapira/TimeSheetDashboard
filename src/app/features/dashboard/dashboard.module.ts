@@ -1,9 +1,9 @@
 import { NgModule } from '@angular/core';
-import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SharedModule } from '../../shared/shared.module';
 import { AgChartsModule } from 'ag-charts-angular';
 
+import { DataTableComponent } from '../../shared/components/data-table/data-table.component';
 import { SummaryCardComponent } from '../../shared/components/summary-card/summary-card.component';
 
 import { DashboardComponent } from './dashboard.component';
@@ -17,13 +17,14 @@ import { TrackedHoursChartComponent } from './track-hours-chart/track-hours-char
     DashboardComponent,
     SummaryDashboardComponent,
     TrackedHoursChartComponent,
-    EmployeeMetricsComponent
+    EmployeeMetricsComponent,
+    TimeTrackingComponent
   ],
   imports: [
     AgChartsModule,
     FormsModule,
     SharedModule,
-    TimeTrackingComponent,
+    DataTableComponent,
     SummaryCardComponent,
   ],
 })

@@ -1,134 +1,257 @@
-import { Component, Input, OnInit, OnChanges, SimpleChanges, Inject, PLATFORM_ID } from '@angular/core';
-import { GridApi, ColDef, GridReadyEvent } from 'ag-grid-community';
-import { AgGridAngular } from 'ag-grid-angular'
+import { Component, Input, OnChanges, SimpleChanges, PLATFORM_ID, Inject, OnInit } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-// shared/components/timesheet-table/timesheet-table.component.ts
+import { ColDef, ICellRendererParams, ClientSideRowModelModule } from 'ag-grid-community';
+import { ViewMode, EmployeeTimeTracking, ClientTimeTracking } from '../../../features/models/time-tracking.interface';
 
-// models/timesheet.models.ts
-interface EmployeeTimesheet {
-  name: string;
-  hoursTracked: string;
-  expectedHoursTracked: string;
-  hoursProject: string;
-  status: string;
-}
-
-interface ClientTimesheet {
-  name: string;
-  timesheet: string;
-  expectedTime: string;
-  trackedTime: string;
-  missedTime: string;
-  hoursProject: string;
-  performance: string;
-}
-
-type ViewType = 'employee' | 'client';
+type TimeTrackingData = EmployeeTimeTracking | ClientTimeTracking;
 
 @Component({
-  selector: 'app-timesheet-table',
+  selector: 'app-data-table',
   standalone: true,
-  imports: [AgGridAngular, CommonModule, FormsModule, AgGridModule ],
+  imports: [
+    CommonModule,
+    AgGridModule
+  ],
   template: `
-    <ag-grid-angular
-      class="ag-theme-alpine"
-      [rowData]="rowData"
-      [columnDefs]="columnDefs"
-      [defaultColDef]="defaultColDef"
-      [rowSelection]="'multiple'"
-      [suppressRowClickSelection]="true"
-      (gridReady)="onGridReady($event)"
-      style="width: 100%; height: 500px;">
-    </ag-grid-angular>
+    @if (isBrowser) {
+        <ag-grid-angular
+          class="time-tracking-grid"
+          [rowData]="rowData"
+          [columnDefs]="columnDefs"
+          [defaultColDef]="defaultColDef"
+          [modules]="modules"
+          [rowSelection]="'multiple'"
+          [suppressRowClickSelection]="true"
+          (gridReady)="onGridReady($event)"
+          [headerHeight]="48"
+          [rowHeight]="52"
+          domLayout="autoHeight"
+        >
+        </ag-grid-angular>
+    } @else {
+      <div class="loading-placeholder">Loading...</div>
+    }
   `,
   styles: [`
     :host {
       display: block;
+    }
+
+    :host ::ng-deep {
+      .time-tracking-grid {
+        width: 100%;
+      }
+
+      .ag-header {
+        background: white !important;
+        border: none !important;
+      }
+
+      .ag-header-cell {
+        background: white !important;
+        border-bottom: 1px solid #E9EDF7 !important;
+      }
+
+      .ag-header-cell-label {
+        color: #485585 !important;
+        font-weight: 600 !important;
+      }
+
+      .ag-cell {
+        display: flex !important;
+        align-items: center !important;
+        border-bottom: 1px solid #E9EDF7 !important;
+        line-height: 1.5 !important;
+        color: #2B3674 !important;
+      }
+
+      .ag-row {
+        border: none !important;
+        background: white !important;
+      }
+
+      .ag-row-hover {
+        background: #F4F7FE !important;
+      }
+
+      .ag-checkbox-input-wrapper {
+        border: 2px solid #6E62E5 !important;
+        border-radius: 4px !important;
+        width: 18px !important;
+        height: 18px !important;
+
+        &.ag-checked {
+          background-color: #6E62E5 !important;
+          border-color: #6E62E5 !important;
+        }
+      }
+
+      .status-approved {
+        color: #FF8A65 !important;
+        padding: 4px 12px;
+        background: #FFF6F1;
+        border-radius: 16px;
+        display: inline-block;
+        text-align: center;
+        min-width: 80px;
+      }
+
+      .hours-value {
+        color: #2B3674;
+        font-weight: 500;
+      }
+    }
+
+    .loading-placeholder {
+      height: 400px;
       width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f5f5f5;
+      border-radius: 8px;
     }
   `]
 })
-export class TimesheetTableComponent implements OnChanges {
-  @Input() viewType: ViewType = 'employee';
-  @Input() data: (EmployeeTimesheet | ClientTimesheet)[] = [];
-  @Input() selectedPeriod: string = '';
+export class DataTableComponent implements OnInit, OnChanges {
+  @Input() viewMode: ViewMode = 'employee';
+  @Input() rowData: TimeTrackingData[] = [];
 
-  private gridApi!: GridApi;
-  rowData: any[] = [];
-  columnDefs: ColDef[] = [];
-  
-  defaultColDef: ColDef = {
+  isBrowser: boolean;
+  modules = [ClientSideRowModelModule];
+  columnDefs: ColDef<TimeTrackingData>[] = [];
+  defaultColDef: ColDef<TimeTrackingData> = {
     sortable: true,
     filter: true,
     resizable: true,
     flex: 1,
-    minWidth: 100
+    autoHeight: true,
+    suppressSizeToFit: false
   };
 
-  constructor() {
-    this.setColumnDefinitions();
+  private employeeColumns: ColDef<EmployeeTimeTracking>[] = [
+    {
+      headerName: '',
+      checkboxSelection: true,
+      headerCheckboxSelection: true,
+      width: 50,
+      flex: 0.5,
+      headerClass: 'checkbox-header',
+      cellClass: 'checkbox-cell'
+    },
+    { 
+      field: 'name',
+      headerName: 'Name',
+      flex: 2,
+      sortable: true
+    },
+    { 
+      field: 'trackedHours',
+      headerName: 'Hours Tracked',
+      cellClass: 'hours-value',
+      valueFormatter: params => `${params.value}Hours`
+    },
+    { 
+      field: 'expectedHours',
+      headerName: 'Expected Hours Tracked',
+      cellClass: 'hours-value',
+      valueFormatter: params => `${params.value}Hours`
+    },
+    { 
+      field: 'hoursPerProject',
+      headerName: 'Hours/Project',
+      cellClass: 'hours-value',
+      valueFormatter: params => `${params.value}Hours`
+    },
+    { 
+      field: 'status',
+      headerName: 'Status',
+      cellClass: params => `status-${params.value.toLowerCase()}`,
+      valueFormatter: params => params.value
+    }
+  ];
+
+  private clientColumns: ColDef<ClientTimeTracking>[] = [
+    {
+      headerName: '',
+      checkboxSelection: true,
+      headerCheckboxSelection: true,
+      width: 50,
+      flex: 0.5,
+      headerClass: 'checkbox-header',
+      cellClass: 'checkbox-cell'
+    },
+    { 
+      field: 'name',
+      headerName: 'Name',
+      flex: 2,
+      sortable: true
+    },
+    { 
+      field: 'timesheet',
+      headerName: 'Timesheet',
+      cellClass: 'hours-value',
+      valueFormatter: params => `${params.value}Hours`
+    },
+    { 
+      field: 'expectedTime',
+      headerName: 'Expected Time',
+      cellClass: 'hours-value',
+      valueFormatter: params => `${params.value}Hours`
+    },
+    { 
+      field: 'trackedTime',
+      headerName: 'Tracked Time',
+      cellClass: 'hours-value',
+      valueFormatter: params => `${params.value}Hours`
+    },
+    { 
+      field: 'missedTime',
+      headerName: 'Missed Time',
+      cellClass: 'hours-value',
+      valueFormatter: params => `${params.value}Hours`
+    },
+    { 
+      field: 'hoursPerProject',
+      headerName: 'Hours/Project',
+      cellClass: 'hours-value',
+      valueFormatter: params => `${params.value}Hours`
+    },
+    { 
+      field: 'performance',
+      headerName: 'Performance',
+      valueFormatter: params => `${params.value}%`
+    }
+  ];
+
+  constructor(@Inject(PLATFORM_ID) platformId: Object) {
+    this.isBrowser = isPlatformBrowser(platformId);
+  }
+
+  ngOnInit() {
+    if (this.isBrowser) {
+      this.updateColumns();
+    }
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['viewType'] || changes['data']) {
-      this.setColumnDefinitions();
-      this.rowData = this.data;
+    if ((changes['viewMode'] || changes['rowData']) && this.isBrowser) {
+      this.updateColumns();
     }
   }
 
-  onGridReady(params: GridReadyEvent) {
-    this.gridApi = params.api;
-    this.gridApi.sizeColumnsToFit();
+  private updateColumns() {
+    this.columnDefs = (this.viewMode === 'employee' 
+      ? this.employeeColumns 
+      : this.clientColumns) as ColDef<TimeTrackingData>[];
   }
 
-  private setColumnDefinitions() {
-    if (this.viewType === 'employee') {
-      this.columnDefs = [
-        {
-          headerCheckboxSelection: true,
-          checkboxSelection: true,
-          width: 50,
-          flex: 0
-        },
-        { field: 'name', headerName: 'Name' },
-        { field: 'hoursTracked', headerName: 'Hours Tracked' },
-        { field: 'expectedHoursTracked', headerName: 'Expected Hours Tracked' },
-        { field: 'hoursProject', headerName: 'Hours/Project' },
-        { 
-          field: 'status', 
-          headerName: 'Status',
-          cellRenderer: this.statusRenderer
-        }
-      ];
-    } else {
-      this.columnDefs = [
-        {
-          headerCheckboxSelection: true,
-          checkboxSelection: true,
-          width: 50,
-          flex: 0
-        },
-        { field: 'name', headerName: 'Name' },
-        { field: 'timesheet', headerName: 'Timesheet' },
-        { field: 'expectedTime', headerName: 'Expected Time' },
-        { field: 'trackedTime', headerName: 'Tracked Time' },
-        { field: 'missedTime', headerName: 'Missed Time' },
-        { field: 'hoursProject', headerName: 'Hours/Project' },
-        { field: 'performance', headerName: 'Performance' }
-      ];
+  onGridReady(params: any) {
+    if (this.isBrowser) {
+      setTimeout(() => {
+        params.api.sizeColumnsToFit();
+      });
     }
-  }
-
-  private statusRenderer(params: any) {
-    const status = params.value;
-    const color = status === 'Approved' ? '#4CAF50' : '#FFA000';
-    return `
-      <div style="display: flex; align-items: center;">
-        <span style="width: 8px; height: 8px; border-radius: 50%; background-color: ${color}; margin-right: 6px;"></span>
-        <span>${status}</span>
-      </div>
-    `;
   }
 }

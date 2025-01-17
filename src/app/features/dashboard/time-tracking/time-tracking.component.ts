@@ -1,93 +1,174 @@
-// components/timesheet-container/timesheet-container.component.ts
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { TimesheetService } from './time-tracking.service';
-import { ViewType } from '../../models/time-tracking.interface';
-import { MatFormField } from '@angular/material/form-field';
-import {MatButtonToggleModule} from '@angular/material/button-toggle';
-import { MatLabel } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
-import { TimesheetTableComponent } from 'src/app/shared/components/data-table/data-table.component';
+import { TimeTrackingService } from './time-tracking.service';
+import { ViewMode, Period } from '../../models/time-tracking.interface';
+import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
 
 @Component({
-  selector: 'app-timesheet-container',
-  standalone: true,
-  imports: [FormsModule, MatFormField, MatButtonToggleModule, MatLabel, MatSelectModule, TimesheetTableComponent],
+  selector: 'app-time-tracked',
   template: `
-    <div class="timesheet-container">
-      <!-- View Type Selection -->
-      <div class="controls-row">
-        <mat-button-toggle-group
-          [(ngModel)]="currentView"
-          (change)="onViewChange()">
-          <mat-button-toggle value="employee">Employee</mat-button-toggle>
-          <mat-button-toggle value="client">Client</mat-button-toggle>
-        </mat-button-toggle-group>
-
-        <!-- Period Selection -->
-        <mat-form-field>
-          <mat-label>Select Period</mat-label>
-          <mat-select [(ngModel)]="selectedPeriod" (selectionChange)="onPeriodChange()">
-            <mat-option *ngFor="let period of periods" [value]="period.value">
-              {{ period.label }}
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
+    <div class="time-tracked-container">
+      <div class="header">
+        <h2>Time Tracked</h2>
+        <div class="controls">
+          <div class="view-toggle">
+            <button 
+              class="toggle-btn"
+              [class.active]="viewMode === 'employee'"
+              (click)="setViewMode('employee')"
+            >
+              Employee
+            </button>
+            <button 
+              class="toggle-btn"
+              [class.active]="viewMode === 'client'"
+              (click)="setViewMode('client')"
+            >
+              Clients
+            </button>
+          </div>
+          <select [(ngModel)]="selectedPeriod" (change)="loadData()">
+            <option [value]="year" *ngFor="let year of availableYears">{{ year }}</option>
+          </select>
+        </div>
       </div>
 
-      <!-- Shared Table Component -->
-      <app-timesheet-table
-        [viewType]="currentView"
-        [data]="timesheetData"
-        [selectedPeriod]="selectedPeriod">
-      </app-timesheet-table>
+      @if (tableData.length > 0) {
+        <app-data-table
+          [viewMode]="viewMode"
+          [rowData]="tableData"
+        ></app-data-table>
+      } @else {
+        <div class="loading">Loading data...</div>
+      }
     </div>
   `,
   styles: [`
-    .timesheet-container {
-      padding: 20px;
+    .time-tracked-container {
+      padding: 24px;
+      background: #FFFFFF;
+      margin-top:12px;
+      border-radius: 12px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
-    .controls-row {
+
+    .header {
       display: flex;
-      gap: 20px;
-      margin-bottom: 20px;
+      justify-content: space-between;
       align-items: center;
+      margin-bottom: 24px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: #1B2559;
+    }
+
+    .controls {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .view-toggle {
+      display: flex;
+      background: #F4F7FE;
+      padding: 4px;
+      border-radius: 8px;
+      gap: 4px;
+    }
+
+    .toggle-btn {
+      padding: 8px 16px;
+      border: none;
+      background: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #1B2559;
+      transition: all 0.3s ease;
+
+      &.active {
+        background: #4318FF;
+        color: white;
+      }
+
+      &:hover:not(.active) {
+        background: rgba(67, 24, 255, 0.1);
+      }
+    }
+
+    select {
+      padding: 8px 16px;
+      border: 1px solid #E0E0E0;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #1B2559;
+      background-color: white;
+      cursor: pointer;
+      min-width: 120px;
+
+      &:focus {
+        outline: none;
+        border-color: #4318FF;
+      }
+    }
+
+    .loading {
+      padding: 20px;
+      text-align: center;
+      color: #1B2559;
+      background: #F4F7FE;
+      border-radius: 8px;
+      margin-top: 20px;
     }
   `]
 })
 export class TimeTrackingComponent implements OnInit {
-  currentView: ViewType = 'employee';
-  selectedPeriod: string = '2024-01';
-  timesheetData: any[] = [];
+  viewMode: ViewMode = 'employee';
+  selectedPeriod: Period = '1998';
+  tableData: any[] = [];
+  availableYears = ['1998', '1999', '2000', '2001', '2002'];
 
-  periods = [
-    { value: '2024-01', label: 'January 2024' },
-    { value: '2024-02', label: 'February 2024' },
-    // Add more periods...
-  ];
-
-  // constructor(private timesheetService: TimesheetService) {}
-  timesheetService = inject(TimesheetService);
+  constructor(private timeTrackingService: TimeTrackingService) {}
 
   ngOnInit() {
+    // Load initial data
     this.loadData();
   }
 
-  onViewChange() {
+  setViewMode(mode: ViewMode) {
+    this.viewMode = mode;
     this.loadData();
   }
 
-  onPeriodChange() {
-    this.loadData();
-  }
-
-  private loadData() {
-    if (this.currentView === 'employee') {
-      this.timesheetService.getEmployeeTimesheets(this.selectedPeriod)
-        .subscribe(data => this.timesheetData = data);
+  loadData() {
+    // Clear existing data while loading
+    this.tableData = [];
+    
+    if (this.viewMode === 'employee') {
+      this.timeTrackingService.getEmployeeData(this.selectedPeriod)
+        .subscribe({
+          next: (data) => {
+            this.tableData = data;
+          },
+          error: (error) => {
+            console.error('Error loading employee data:', error);
+          }
+        });
     } else {
-      this.timesheetService.getClientTimesheets(this.selectedPeriod)
-        .subscribe(data => this.timesheetData = data);
+      this.timeTrackingService.getClientData(this.selectedPeriod)
+        .subscribe({
+          next: (data) => {
+            this.tableData = data;
+          },
+          error: (error) => {
+            console.error('Error loading client data:', error);
+          }
+        });
     }
   }
 }

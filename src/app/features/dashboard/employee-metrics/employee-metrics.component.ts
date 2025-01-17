@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { EmployeeMetricsService } from './employee-metrics.service';
 import { EmployeeMetrics, TimePeriod } from '../../models/employee-metrics.interface';
 
 @Component({
@@ -6,9 +7,9 @@ import { EmployeeMetrics, TimePeriod } from '../../models/employee-metrics.inter
   template: `
     <div class="metrics-container">
       <div class="header">
-        <h2>Employee Metrics</h2>
+        <h2>All employees</h2>
         <select [(ngModel)]="selectedPeriod" (change)="onPeriodChange()">
-          <option value="last7days">Last 7 Months</option>
+          <option value="last7days">This Week</option>
           <option value="lastMonth">Last Month</option>
           <option value="last3Months">Last 3 Months</option>
           <option value="last6Months">Last 6 Months</option>
@@ -19,38 +20,46 @@ import { EmployeeMetrics, TimePeriod } from '../../models/employee-metrics.inter
       <div class="metrics-grid">
         <!-- Main Metrics -->
         <div class="metrics-row">
-          <div class="metric-card">
-            <div class="metric-label">Total employees</div>
-            <div class="metric-value">{{metrics.totalEmployees}}</div>
-            <div class="metric-growth" [class.positive]="metrics.growthRate > 0">
-              {{metrics.growthRate > 0 ? '+' : ''}}{{metrics.growthRate}}%
+          <div class="metric-card total">
+            <div class="metric-header">
+              <div class="metric-label">Total Employees</div>
+              <div class="metric-growth" [class.positive]="metrics.growthRate > 0">
+                <span>{{metrics.growthRate > 0 ? '+' : ''}}{{metrics.growthRate}}%</span>
+              </div>
             </div>
+            <div class="metric-value">{{metrics.totalEmployees}}</div>
           </div>
 
-          <div class="metric-card">
-            <div class="metric-label">Active Now</div>
-            <div class="metric-value">{{metrics.activeNow}}</div>
-            <div class="metric-growth" [class.positive]="metrics.growthRate > 0">
-              {{metrics.growthRate > 0 ? '+' : ''}}{{metrics.growthRate}}%
+          <div class="metric-card active">
+            <div class="metric-header">
+              <div class="metric-label">Active Now</div>
+              <div class="metric-growth" [class.positive]="metrics.growthRate > 0">
+                <span>{{metrics.growthRate > 0 ? '+' : ''}}{{metrics.growthRate}}%</span>
+              </div>
             </div>
+            <div class="metric-value">{{metrics.activeNow}}</div>
           </div>
         </div>
 
         <div class="metrics-row">
-          <div class="metric-card">
-            <div class="metric-label">Average hours/Week</div>
-            <div class="metric-value">{{metrics.averageHoursWeek}}</div>
-            <div class="metric-growth" [class.positive]="metrics.growthRate > 0">
-              {{metrics.growthRate > 0 ? '+' : ''}}{{metrics.growthRate}}%
+          <div class="metric-card hours">
+            <div class="metric-header">
+              <div class="metric-label">Avg Hours/Week</div>
+              <div class="metric-growth" [class.positive]="metrics.growthRate > 0">
+                <span>{{metrics.growthRate > 0 ? '+' : ''}}{{metrics.growthRate}}%</span>
+              </div>
             </div>
+            <div class="metric-value">{{metrics.averageHoursWeek}}</div>
           </div>
 
-          <div class="metric-card">
-            <div class="metric-label">Productivity Score</div>
-            <div class="metric-value">{{metrics.productivityScore}}</div>
-            <div class="metric-growth" [class.positive]="metrics.growthRate > 0">
-              {{metrics.growthRate > 0 ? '+' : ''}}{{metrics.growthRate}}%
+          <div class="metric-card score">
+            <div class="metric-header">
+              <div class="metric-label">Productivity Score</div>
+              <div class="metric-growth" [class.positive]="metrics.growthRate > 0">
+                <span>{{metrics.growthRate > 0 ? '+' : ''}}{{metrics.growthRate}}%</span>
+              </div>
             </div>
+            <div class="metric-value">{{metrics.productivityScore}}</div>
           </div>
         </div>
 
@@ -90,54 +99,72 @@ import { EmployeeMetrics, TimePeriod } from '../../models/employee-metrics.inter
 
     h2 {
       margin: 0;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 600;
       color: #2B3674;
     }
 
     select {
-      padding: 8px 12px;
+      padding: 8px 16px;
       border: 1px solid #E0E0E0;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 14px;
+      background-color: white;
+      color: #2B3674;
+      cursor: pointer;
     }
 
     .metrics-grid {
       display: flex;
       flex-direction: column;
-      gap: 24px;
+      gap: 20px;
     }
 
     .metrics-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 24px;
+      gap: 20px;
     }
 
     .metric-card {
-      background: #F8F9FF;
-      border-radius: 8px;
+      background: #F4F7FE;
+      border-radius: 20px;
       padding: 20px;
+      
+      &.total { background: #F4F7FE; }
+      &.active { background: #F1FDF4; }
+      &.hours { background: #F4F7FE; }
+      &.score { background: #FFF3F8; }
+    }
+
+    .metric-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
     }
 
     .metric-label {
       color: #707EAE;
       font-size: 14px;
-      margin-bottom: 8px;
     }
 
     .metric-value {
-      font-size: 24px;
-      font-weight: 600;
+      font-size: 28px;
+      font-weight: 700;
       color: #2B3674;
-      margin-bottom: 8px;
     }
 
     .metric-growth {
       font-size: 12px;
       color: #DC3545;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: rgba(220, 53, 69, 0.1);
+      
       &.positive {
-        color: #198754;
+        color: #05CD99;
+        background: rgba(5, 205, 153, 0.1);
       }
     }
 
@@ -146,40 +173,44 @@ import { EmployeeMetrics, TimePeriod } from '../../models/employee-metrics.inter
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
       padding: 16px;
-      background: #F8F9FF;
-      border-radius: 8px;
+      background: #F4F7FE;
+      border-radius: 20px;
     }
 
     .status-item {
       text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
 
     .status-label {
       color: #707EAE;
       font-size: 14px;
-      margin-right: 8px;
     }
 
     .status-value {
       color: #2B3674;
-      font-weight: 600;
+      font-size: 16px;
+      font-weight: 700;
     }
   `]
 })
 export class EmployeeMetricsComponent implements OnInit {
   selectedPeriod: TimePeriod = 'last7days';
   metrics: EmployeeMetrics = {
-    totalEmployees: 5669,
-    activeNow: 5669,
-    averageHoursWeek: 5669,
-    productivityScore: 5669,
-    onLeave: 30,
-    remote: 30,
-    newHires: 30,
-    growthRate: 15.80
+    totalEmployees: 0,
+    activeNow: 0,
+    averageHoursWeek: 0,
+    productivityScore: 0,
+    onLeave: 0,
+    remote: 0,
+    newHires: 0,
+    growthRate: 0
   };
+  loading = false;
 
-  constructor() {}
+  constructor(private employeeMetricsService: EmployeeMetricsService) {}
 
   ngOnInit() {
     this.loadMetrics();
@@ -190,8 +221,9 @@ export class EmployeeMetricsComponent implements OnInit {
   }
 
   private loadMetrics() {
-    // Here you would typically make an API call to get the metrics
-    // For now, we're using mock data
-    console.log('Loading metrics for period:', this.selectedPeriod);
+    this.employeeMetricsService.getMetrics(this.selectedPeriod)
+      .subscribe(metrics => {
+        this.metrics = metrics;
+      });
   }
 }
